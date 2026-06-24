@@ -42,8 +42,6 @@ yarn-error.log*
 next-env.d.ts
 
 # project-local
-
-
 *.local
 
 # agent / skills tooling

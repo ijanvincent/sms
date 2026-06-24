@@ -10,7 +10,6 @@ Dockerfile
 .dockerignore
 docker-compose.yml
 .agents
-
 skills-lock.json
 src/generated
 *.db
