@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "key:create": "tsx scripts/create-api-key.ts"
+    "key:create": "tsx scripts/create-api-key.ts",
+    "device:create": "tsx scripts/create-device.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
