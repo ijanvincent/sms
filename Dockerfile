@@ -22,6 +22,11 @@ RUN npm ci --no-audit --no-fund \
 # ---- builder: generate Prisma client + build the standalone server ----
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1
+# `next build` imports every route module to collect page data, which loads the
+# Prisma client and requires DATABASE_URL. This value is a build-time stand-in
+# only: no migrations or queries run here, and it is never carried into the
+# runner stage — the real connection string is injected at runtime from .env.
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build"
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
