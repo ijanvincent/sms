@@ -27,3 +27,13 @@ export async function enqueueMessage(
     },
   });
 }
+
+export function listMessages(limit = 100) {
+  return prisma.message.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { device: { select: { id: true, name: true } } },
+  });
+}
+
+export type MessageListItem = Awaited<ReturnType<typeof listMessages>>[number];
