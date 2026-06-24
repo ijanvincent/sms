@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "key:create": "tsx scripts/create-api-key.ts",
-    "device:create": "tsx scripts/create-device.ts"
+    "device:create": "tsx scripts/create-device.ts",
+    "admin:create": "tsx scripts/create-admin.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -16,6 +17,7 @@
     "@prisma/client": "^7.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "jose": "^6.2.3",
     "lucide-react": "^1.21.0",
     "next": "16.2.9",
     "react": "19.2.4",
