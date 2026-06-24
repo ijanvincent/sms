@@ -1,13 +1,11 @@
-import { cn } from "@/lib/utils";
 import { MESSAGE_STATUS, type MessageStatus } from "@/lib/sms/status";
+import { StateBadge, type StateTone } from "./state-badge";
 
-const STATUS_STYLES: Record<MessageStatus, string> = {
-  [MESSAGE_STATUS.PENDING]:
-    "border-amber-500/30 bg-amber-500/10 text-amber-400",
-  [MESSAGE_STATUS.CLAIMED]: "border-sky-500/30 bg-sky-500/10 text-sky-400",
-  [MESSAGE_STATUS.SENT]:
-    "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-  [MESSAGE_STATUS.FAILED]: "border-red-500/30 bg-red-500/10 text-red-400",
+const STATUS_TONES: Record<MessageStatus, StateTone> = {
+  [MESSAGE_STATUS.PENDING]: "warning",
+  [MESSAGE_STATUS.CLAIMED]: "info",
+  [MESSAGE_STATUS.SENT]: "positive",
+  [MESSAGE_STATUS.FAILED]: "danger",
 };
 
 export function StatusBadge({
@@ -18,15 +16,6 @@ export function StatusBadge({
   className?: string;
 }) {
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
-        STATUS_STYLES[status],
-        className
-      )}
-    >
-      <span className="size-1.5 rounded-full bg-current" />
-      {status}
-    </span>
+    <StateBadge tone={STATUS_TONES[status]} label={status} className={className} />
   );
 }

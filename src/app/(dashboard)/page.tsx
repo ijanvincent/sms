@@ -1,3 +1,5 @@
+import { Inbox } from "lucide-react";
+
 import {
   Card,
   CardContent,
@@ -12,18 +14,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { EmptyState } from "@/components/ui/empty-state";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { PageContainer } from "@/components/layout/page-container";
+import { PageHeader } from "@/components/layout/page-header";
+import { formatDateTime } from "@/lib/format";
 import { isMessageStatus } from "@/lib/sms/status";
-import { getOverviewStats, getRecentMessages } from "@/server/services/stats-service";
+import {
+  getOverviewStats,
+  getRecentMessages,
+} from "@/server/services/stats-service";
 
 export const dynamic = "force-dynamic";
-
-const dateFormatter = new Intl.DateTimeFormat("en-US", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 export default async function OverviewPage() {
   const [stats, recent] = await Promise.all([
@@ -43,15 +45,11 @@ export default async function OverviewPage() {
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-8">
-        <h1 className="font-heading text-2xl font-semibold tracking-tight">
-          Overview
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Live status of the message queue and connected devices.
-        </p>
-      </header>
+    <PageContainer>
+      <PageHeader
+        title="Overview"
+        description="Live status of the message queue and connected devices."
+      />
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
         {cards.map((card) => (
@@ -76,9 +74,11 @@ export default async function OverviewPage() {
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No messages yet.
-            </p>
+            <EmptyState
+              icon={Inbox}
+              title="No messages yet"
+              description="Queued messages will appear here as soon as a client posts one."
+            />
           ) : (
             <Table>
               <TableHeader>
@@ -104,7 +104,7 @@ export default async function OverviewPage() {
                       )}
                     </TableCell>
                     <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
-                      {dateFormatter.format(message.createdAt)}
+                      {formatDateTime(message.createdAt)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -113,6 +113,6 @@ export default async function OverviewPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }
