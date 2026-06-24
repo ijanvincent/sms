@@ -5,6 +5,7 @@ export interface ApiKeyListItem {
   label: string;
   prefix: string;
   enabled: boolean;
+  dailyQuota: number | null;
   lastUsedAt: Date | null;
   createdAt: Date;
   messageCount: number;
@@ -20,6 +21,7 @@ export async function listApiKeys(): Promise<ApiKeyListItem[]> {
       label: true,
       prefix: true,
       enabled: true,
+      dailyQuota: true,
       lastUsedAt: true,
       createdAt: true,
       _count: { select: { messages: true } },
