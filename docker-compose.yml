@@ -1,0 +1,62 @@
+# Full stack: PostgreSQL + the Next.js web/API service.
+#
+#   docker compose up -d db      # just the database (for local `next dev`)
+#   docker compose up --build    # the whole stack (db + web), production-style
+#
+# Credentials are read from `.env` (see `.env.example`).
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot init container: applies pending migrations, then exits.
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+      network: host
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+      # Use the host network during build so npm/registry DNS resolves reliably
+      # (the default build network had transient DNS failures in this environment).
+      network: host
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      # Container-to-container: reach Postgres by its compose service name `db`.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

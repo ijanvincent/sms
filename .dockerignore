@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log*
+README.md
+Dockerfile
+.dockerignore
+docker-compose.yml
+.agents
+
+skills-lock.json
+src/generated
+*.db
+*.db-journal
