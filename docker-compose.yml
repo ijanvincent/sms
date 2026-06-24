@@ -55,6 +55,10 @@ services:
       NODE_ENV: production
       # Container-to-container: reach Postgres by its compose service name `db`.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      # Dashboard auth (read from the host .env at compose time).
+      AUTH_SECRET: ${AUTH_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
     ports:
       - "3000:3000"
 
