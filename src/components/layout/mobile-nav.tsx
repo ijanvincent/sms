@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 
 import { Brand } from "./brand";
 import { NavLinks } from "./nav-links";
+import { LogoutButton } from "./logout-button";
 
 export function MobileNav() {
   const [open, setOpen] = useState(false);
@@ -58,6 +59,9 @@ export function MobileNav() {
               </button>
             </div>
             <NavLinks onNavigate={() => setOpen(false)} />
+            <div className="border-t p-3">
+              <LogoutButton />
+            </div>
           </aside>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { Brand } from "./brand";
 import { NavLinks } from "./nav-links";
+import { LogoutButton } from "./logout-button";
 
 export function Sidebar() {
   return (
@@ -8,6 +9,9 @@ export function Sidebar() {
         <Brand />
       </div>
       <NavLinks />
+      <div className="border-t p-3">
+        <LogoutButton />
+      </div>
     </aside>
   );
 }
