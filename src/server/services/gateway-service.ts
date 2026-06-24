@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { MESSAGE_STATUS, type MessageStatus } from "@/lib/sms/status";
+import { resolveFailure } from "@/lib/sms/retry";
 import type { Message } from "@/generated/prisma/client";
 
 export class DeviceNotFoundError extends Error {
@@ -79,31 +80,41 @@ export async function reportResult(
   status: Extract<MessageStatus, "SENT" | "FAILED">,
   error?: string,
 ): Promise<Message> {
-  const message = await prisma.message.findUnique({ where: { id: messageId } });
-  if (!message) throw new MessageNotFoundError(messageId);
-  if (message.status !== MESSAGE_STATUS.CLAIMED) throw new MessageNotClaimedError(messageId);
-  if (message.deviceId !== deviceId) throw new DeviceMismatchError();
+  // Lock the row for the whole read-decide-write so concurrent reports (or a
+  // report racing a re-poll) cannot lose an attempt increment or clobber state.
+  return prisma.$transaction(async (tx) => {
+    const [locked] = await tx.$queryRaw<
+      Array<{ status: string; deviceId: string | null; attempts: number; maxAttempts: number }>
+    >`
+      SELECT status, "deviceId", attempts, "maxAttempts"
+      FROM "Message"
+      WHERE id = ${messageId}
+      FOR UPDATE
+    `;
 
-  if (status === MESSAGE_STATUS.SENT) {
-    return prisma.message.update({
+    if (!locked) throw new MessageNotFoundError(messageId);
+    if (locked.status !== MESSAGE_STATUS.CLAIMED) throw new MessageNotClaimedError(messageId);
+    if (locked.deviceId !== deviceId) throw new DeviceMismatchError();
+
+    if (status === MESSAGE_STATUS.SENT) {
+      return tx.message.update({
+        where: { id: messageId },
+        data: { status: MESSAGE_STATUS.SENT, sentAt: new Date(), attempts: { increment: 1 } },
+      });
+    }
+
+    const { status: nextStatus, requeue } = resolveFailure(
+      locked.attempts + 1,
+      locked.maxAttempts,
+    );
+    return tx.message.update({
       where: { id: messageId },
-      data: { status: MESSAGE_STATUS.SENT, sentAt: new Date(), attempts: { increment: 1 } },
+      data: {
+        status: nextStatus,
+        attempts: { increment: 1 },
+        error: error ?? "send failed",
+        ...(requeue ? { deviceId: null, claimedAt: null } : {}),
+      },
     });
-  }
-
-  // Failed: retry until maxAttempts is reached, then give up.
-  const attempts = message.attempts + 1;
-  const giveUp = attempts >= message.maxAttempts;
-  return prisma.message.update({
-    where: { id: messageId },
-    data: giveUp
-      ? { status: MESSAGE_STATUS.FAILED, attempts, error: error ?? "send failed" }
-      : {
-          status: MESSAGE_STATUS.PENDING,
-          attempts,
-          error: error ?? "send failed",
-          deviceId: null,
-          claimedAt: null,
-        },
   });
 }
