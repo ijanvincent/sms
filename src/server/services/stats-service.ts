@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
+import { DEVICE_ONLINE_WINDOW_MS } from "@/lib/sms/device";
 import { MESSAGE_STATUS } from "@/lib/sms/status";
-
-const ONLINE_WINDOW_MS = 2 * 60 * 1000;
 
 export interface OverviewStats {
   messages: { total: number; pending: number; claimed: number; sent: number; failed: number };
@@ -17,7 +16,9 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     prisma.message.count({ where: { status: MESSAGE_STATUS.FAILED } }),
     prisma.device.count(),
     prisma.device.count({
-      where: { lastSeenAt: { gte: new Date(Date.now() - ONLINE_WINDOW_MS) } },
+      where: {
+        lastSeenAt: { gte: new Date(Date.now() - DEVICE_ONLINE_WINDOW_MS) },
+      },
     }),
   ]);
 
