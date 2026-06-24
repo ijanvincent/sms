@@ -1,0 +1,57 @@
+// status values: see src/lib/sms/status.ts
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  label      String
+  hashedKey  String    @unique
+  prefix     String
+  enabled    Boolean   @default(true)
+  dailyQuota Int? // max messages per calendar day; null = unlimited
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  messages Message[]
+}
+
+model Device {
+  id         String    @id @default(cuid())
+  name       String
+  carrier    String?
+  simNumber  String?
+  enabled    Boolean   @default(true)
+  lastSeenAt DateTime? // heartbeat; powers online/offline status
+  createdAt  DateTime  @default(now())
+
+  messages Message[]
+}
+
+model Message {
+  id          String    @id @default(cuid())
+  recipient   String
+  body        String
+  status      String    @default("PENDING")
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  error       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  claimedAt   DateTime?
+  sentAt      DateTime?
+
+  apiKeyId String?
+  apiKey   ApiKey? @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+  deviceId String?
+  device   Device? @relation(fields: [deviceId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([deviceId, status])
+}
