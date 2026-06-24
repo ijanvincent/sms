@@ -1,0 +1,45 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Signal } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+import { NAV_ITEMS } from "./nav-items";
+
+export function Sidebar() {
+  const pathname = usePathname();
+
+  return (
+    <aside className="flex w-60 shrink-0 flex-col border-r bg-sidebar">
+      <div className="flex h-14 items-center gap-2 border-b px-5">
+        <Signal className="size-5 text-emerald-400" />
+        <span className="font-heading text-sm font-semibold tracking-tight">
+          SMS Gateway
+        </span>
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-1 p-3">
+        {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+          const active =
+            href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              className={cn(
+                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                active
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                  : "text-muted-foreground hover:bg-sidebar-accent/50 hover:text-foreground"
+              )}
+            >
+              <Icon className="size-4" />
+              {label}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
+  );
+}
