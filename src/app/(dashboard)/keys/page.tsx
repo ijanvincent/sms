@@ -43,6 +43,7 @@ export default async function ApiKeysPage() {
                   <TableHead>Label</TableHead>
                   <TableHead>Key</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Daily quota</TableHead>
                   <TableHead className="text-right">Messages</TableHead>
                   <TableHead className="text-right">Last used</TableHead>
                   <TableHead className="text-right">Created</TableHead>
@@ -60,6 +61,9 @@ export default async function ApiKeysPage() {
                         tone={key.enabled ? "positive" : "neutral"}
                         label={key.enabled ? "Enabled" : "Disabled"}
                       />
+                    </TableCell>
+                    <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
+                      {key.dailyQuota ?? "∞"}
                     </TableCell>
                     <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                       {key.messageCount}

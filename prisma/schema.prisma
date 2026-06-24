@@ -15,6 +15,7 @@ model ApiKey {
   hashedKey  String    @unique
   prefix     String
   enabled    Boolean   @default(true)
+  dailyQuota Int? // max messages per calendar day; null = unlimited
   lastUsedAt DateTime?
   createdAt  DateTime  @default(now())
 
