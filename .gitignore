@@ -42,12 +42,14 @@ yarn-error.log*
 next-env.d.ts
 
 # project-local
+.CLAUDE.md
 .claude
 *.local
 
 # agent / skills tooling
 .agents/
 skills-lock.json
+.playwright-mcp/
 
 # prisma generated client + local db
 /src/generated
