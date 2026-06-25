@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:seed": "prisma db seed",
     "key:create": "tsx scripts/create-api-key.ts",
     "device:create": "tsx scripts/create-device.ts",
     "admin:create": "tsx scripts/create-admin.ts"
