@@ -1,12 +1,10 @@
 <div align="center">
 
-# SMS Gateway
+# ＳＭＳ　ＧＡＴＥＷＡＹ
 
-**A self-hosted SMS gateway — send SMS through your own Android phone's promo SIM instead of paying a commercial provider.**
+Your phone's SIM as a self-hosted SMS gateway
 
-Clients POST messages to an HTTP API; messages are queued in Postgres; a companion
-Android app claims pending messages, sends them over the cellular network, and reports
-status back. A Twilio alternative you fully own.
+**free SMS · HTTP API · Postgres queue · Android sender · rate-limited · self-hosted**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-087EA4?logo=react)](https://react.dev)
@@ -15,9 +13,16 @@ status back. A Twilio alternative you fully own.
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://www.docker.com)
 
+[Quickstart](#getting-started) · [API](#api) · [Architecture](#architecture) · [Lifecycle](#message-lifecycle) · [Security](#security)
+
 </div>
 
 ---
+
+Send SMS through your own Android phone's promo SIM instead of paying a commercial
+provider. Clients POST to an HTTP API; messages are queued in Postgres; a companion
+Android app claims them, sends over the cellular network, and reports status back —
+a **Twilio alternative you fully own**.
 
 ![Dashboard — Overview](docs/screenshots/dashboard-overview.png)
 
