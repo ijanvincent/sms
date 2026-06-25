@@ -1,13 +1,9 @@
 <div align="center">
 
 <pre>
-  ▄▄▄▄  ▄    ▄  ▄▄▄▄           ▄▄▄    ▄▄  ▄▄▄▄▄▄▄ ▄▄▄▄▄▄▄     ▄   ▄▄  ▄     ▄
- █▀   ▀ ██  ██ █▀   ▀        ▄▀   ▀   ██     █    █     █  █  █   ██   ▀▄ ▄▀ 
- ▀█▄▄▄  █ ██ █ ▀█▄▄▄         █   ▄▄  █  █    █    █▄▄▄▄▄▀ █▀█ █  █  █   ▀█▀  
-     ▀█ █ ▀▀ █     ▀█        █    █  █▄▄█    █    █      ██ ██▀  █▄▄█    █   
- ▀▄▄▄█▀ █    █ ▀▄▄▄█▀         ▀▄▄▄▀ █    █   █    █▄▄▄▄▄ █   █  █    █   █   
+           ＳＭＳ  ＧＡＴＥＷＡＹ
 
-                Your phone's SIM as a self-hosted SMS gateway
+Your phone's SIM as a self-hosted SMS gateway
 </pre>
 
 **free SMS · HTTP API · Postgres queue · Android sender · rate-limited · self-hosted**
