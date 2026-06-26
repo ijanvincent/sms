@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Ban } from "lucide-react";
 
 import { Brand } from "@/components/layout/brand";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 const DEFAULT_LOCK_SECONDS = 60;
 
@@ -28,15 +28,15 @@ export default function LoginPage() {
   const [errorNonce, setErrorNonce] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [lockSeconds, setLockSeconds] = useState(0);
+  const [lockMinutes, setLockMinutes] = useState(0);
 
   const locked = lockSeconds > 0;
 
-  // Tick the lockout countdown down to zero, one second at a time.
+  // Clear the lockout once the retry window elapses. A single timeout (rather
+  // than a per-second tick) is enough since the remaining time isn't shown.
   useEffect(() => {
     if (lockSeconds <= 0) return;
-    const timer = setTimeout(() => {
-      setLockSeconds((seconds) => Math.max(0, seconds - 1));
-    }, 1000);
+    const timer = setTimeout(() => setLockSeconds(0), lockSeconds * 1000);
     return () => clearTimeout(timer);
   }, [lockSeconds]);
 
@@ -78,6 +78,7 @@ export default function LoginPage() {
         Number(res.headers.get("Retry-After")) ||
         DEFAULT_LOCK_SECONDS;
       setLockSeconds(retryAfter);
+      setLockMinutes(Math.max(1, Math.ceil(retryAfter / 60)));
     }
 
     fail(data?.error?.message ?? "Login failed. Please try again.");
@@ -129,27 +130,31 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && (
+            {(error || locked) && (
               <p
                 key={errorNonce}
                 role="alert"
                 className="text-sm text-destructive motion-safe:animate-shake"
               >
-                {error}
+                {locked
+                  ? `Access locked — try again in ${lockMinutes} min.`
+                  : error}
               </p>
             )}
 
             <Button
               type="submit"
               disabled={submitting || locked}
-              className="w-full transition-transform active:scale-[0.98]"
+              title={locked ? "Sign-in locked — too many attempts" : undefined}
+              className={cn(
+                "w-full transition-transform active:scale-[0.98]",
+                // Keep the button visible but show a not-allowed cursor on hover
+                // while locked (the base button suppresses pointer events when
+                // disabled, so re-enable them just for the cursor affordance).
+                locked && "disabled:pointer-events-auto disabled:cursor-not-allowed",
+              )}
             >
-              {locked ? (
-                <>
-                  <Ban className="size-4" />
-                  <span className="sr-only">Sign in temporarily locked</span>
-                </>
-              ) : submitting ? (
+              {submitting ? (
                 <>
                   <Spinner />
                   Signing in…

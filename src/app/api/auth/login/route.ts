@@ -9,16 +9,29 @@ import {
 } from "@/lib/auth/session";
 import { loginSchema } from "@/server/validation/auth";
 import { getClientIp } from "@/server/client-ip";
+import { checkRateLimit } from "@/server/rate-limit";
 import {
   checkLoginThrottle,
   clearLoginThrottle,
   recordFailedLogin,
 } from "@/server/auth/login-throttle";
 
-export async function POST(request: Request) {
-  const throttleKey = getClientIp(request);
+// Generic per-IP request cap, separate from the failed-attempt lockout below:
+// it bounds request *volume* (including the success path) so the expensive
+// scrypt verification can't be used as a CPU-exhaustion vector.
+const RATE_LIMIT = 10;
 
-  const throttle = checkLoginThrottle(throttleKey);
+export async function POST(request: Request) {
+  const clientIp = getClientIp(request);
+
+  const rate = checkRateLimit(`auth-login:${clientIp}`, RATE_LIMIT);
+  if (!rate.allowed) {
+    const res = jsonError(429, "rate_limited", "Too many requests; slow down.");
+    res.headers.set("Retry-After", String(rate.retryAfterSeconds));
+    return res;
+  }
+
+  const throttle = checkLoginThrottle(clientIp);
   if (throttle.locked) {
     const res = jsonError(
       429,
@@ -44,11 +57,28 @@ export async function POST(request: Request) {
 
   const { username, password } = parsed.data;
   if (!(await verifyAdminCredentials(username, password))) {
-    recordFailedLogin(throttleKey);
-    return jsonError(401, "invalid_credentials", "Incorrect username or password.");
+    const result = recordFailedLogin(clientIp);
+
+    if (result.locked) {
+      const res = jsonError(
+        429,
+        "too_many_attempts",
+        "Access locked — too many attempts. Please wait before trying again.",
+        { retryAfter: result.retryAfterSeconds },
+      );
+      res.headers.set("Retry-After", String(result.retryAfterSeconds));
+      return res;
+    }
+
+    return jsonError(
+      401,
+      "invalid_credentials",
+      `Invalid credentials, ${result.attemptsRemaining} attempt(s) remaining.`,
+      { attemptsRemaining: result.attemptsRemaining },
+    );
   }
 
-  clearLoginThrottle(throttleKey);
+  clearLoginThrottle(clientIp);
 
   const token = await createSessionToken(username);
   const cookieStore = await cookies();
