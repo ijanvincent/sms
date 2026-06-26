@@ -1,20 +1,29 @@
-// Brute-force protection for the admin login endpoint. Counts *failed* sign-in
-// attempts per caller within a fixed window and locks further attempts once the
-// limit is reached; a successful sign-in clears the record so it never counts
-// against a legitimate admin.
-//
-// In-memory and single-instance, matching the rest of this self-hosted gateway.
-// A horizontally-scaled deployment should back this with a shared store (e.g.
-// Redis) so the window is global across instances.
-interface Attempts {
-  count: number;
-  resetAt: number;
-}
+import { createFixedWindow } from "@/server/fixed-window";
 
+// Brute-force protection for the admin login endpoint, built on the shared
+// fixed-window primitive (which evicts expired keys so the maps cannot grow
+// unbounded).
+//
+// Two layers:
+//  1. Per-caller — counts failed sign-ins per client key (IP) and locks once the
+//     limit is reached. A successful sign-in clears the caller so it never
+//     counts against a legitimate admin.
+//  2. Global backstop — a single spoof-proof counter across *all* callers. The
+//     per-caller key derives from `X-Forwarded-For`, which an attacker on an
+//     untrusted network can rotate to dodge the per-caller lock; the global
+//     ceiling still trips under such a distributed attack. It is set high enough
+//     that a single legitimate admin will never reach it.
 const MAX_ATTEMPTS = 5;
 const WINDOW_MS = 5 * 60_000; // 5 minutes
 
-const attempts = new Map<string, Attempts>();
+const GLOBAL_KEY = "__all__";
+const GLOBAL_MAX_ATTEMPTS = 50;
+const GLOBAL_WINDOW_MS = 15 * 60_000; // 15 minutes
+
+const perCaller = createFixedWindow(WINDOW_MS, { sweepIntervalMs: WINDOW_MS });
+const global = createFixedWindow(GLOBAL_WINDOW_MS, {
+  sweepIntervalMs: GLOBAL_WINDOW_MS,
+});
 
 export interface LoginThrottleState {
   locked: boolean;
@@ -22,35 +31,26 @@ export interface LoginThrottleState {
 }
 
 export function checkLoginThrottle(key: string): LoginThrottleState {
-  const now = Date.now();
-  const entry = attempts.get(key);
-
-  if (!entry || now >= entry.resetAt) {
-    return { locked: false, retryAfterSeconds: 0 };
+  const caller = perCaller.peek(key);
+  if (caller.count >= MAX_ATTEMPTS) {
+    return { locked: true, retryAfterSeconds: caller.retryAfterSeconds };
   }
 
-  if (entry.count >= MAX_ATTEMPTS) {
-    return {
-      locked: true,
-      retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000),
-    };
+  const all = global.peek(GLOBAL_KEY);
+  if (all.count >= GLOBAL_MAX_ATTEMPTS) {
+    return { locked: true, retryAfterSeconds: all.retryAfterSeconds };
   }
 
   return { locked: false, retryAfterSeconds: 0 };
 }
 
 export function recordFailedLogin(key: string): void {
-  const now = Date.now();
-  const entry = attempts.get(key);
-
-  if (!entry || now >= entry.resetAt) {
-    attempts.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return;
-  }
-
-  entry.count += 1;
+  perCaller.hit(key);
+  global.hit(GLOBAL_KEY);
 }
 
 export function clearLoginThrottle(key: string): void {
-  attempts.delete(key);
+  // Only the caller's own counter is cleared; the global backstop is system-wide
+  // and is left to age out on its own.
+  perCaller.reset(key);
 }

@@ -42,6 +42,7 @@ export default async function ApiKeysPage() {
                 <TableRow>
                   <TableHead>Label</TableHead>
                   <TableHead>Key</TableHead>
+                  <TableHead>Scope</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Daily quota</TableHead>
                   <TableHead className="text-right">Messages</TableHead>
@@ -55,6 +56,13 @@ export default async function ApiKeysPage() {
                     <TableCell className="font-medium">{key.label}</TableCell>
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {key.prefix}…
+                    </TableCell>
+                    <TableCell>
+                      <StateBadge
+                        tone={key.scope === "gateway" ? "info" : "neutral"}
+                        label={key.scope}
+                        className="capitalize"
+                      />
                     </TableCell>
                     <TableCell>
                       <StateBadge

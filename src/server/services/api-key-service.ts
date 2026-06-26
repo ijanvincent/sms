@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
+import type { ApiKeyScope } from "@/lib/auth/api-key-scope";
 
 export interface ApiKeyListItem {
   id: string;
   label: string;
   prefix: string;
+  scope: ApiKeyScope;
   enabled: boolean;
   dailyQuota: number | null;
   lastUsedAt: Date | null;
@@ -20,6 +22,7 @@ export async function listApiKeys(): Promise<ApiKeyListItem[]> {
       id: true,
       label: true,
       prefix: true,
+      scope: true,
       enabled: true,
       dailyQuota: true,
       lastUsedAt: true,
@@ -28,8 +31,9 @@ export async function listApiKeys(): Promise<ApiKeyListItem[]> {
     },
   });
 
-  return keys.map(({ _count, ...key }) => ({
+  return keys.map(({ _count, scope, ...key }) => ({
     ...key,
+    scope: scope as ApiKeyScope,
     messageCount: _count.messages,
   }));
 }

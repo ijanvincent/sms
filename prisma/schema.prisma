@@ -14,6 +14,7 @@ model ApiKey {
   label      String
   hashedKey  String    @unique
   prefix     String
+  scope      String    @default("client") // see src/lib/auth/api-key-scope.ts: "client" enqueues, "gateway" claims/reports
   enabled    Boolean   @default(true)
   dailyQuota Int? // max messages per calendar day; null = unlimited
   lastUsedAt DateTime?
@@ -54,4 +55,5 @@ model Message {
 
   @@index([status, createdAt])
   @@index([deviceId, status])
+  @@index([apiKeyId, createdAt])
 }

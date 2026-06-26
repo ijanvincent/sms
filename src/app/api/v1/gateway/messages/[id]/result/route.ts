@@ -1,5 +1,7 @@
 import { json, jsonError } from "@/lib/http";
-import { authenticateRequest } from "@/server/auth/require-api-key";
+import { authorizeRequest } from "@/server/auth/require-api-key";
+import { checkRateLimit } from "@/server/rate-limit";
+import { API_KEY_SCOPE } from "@/lib/auth/api-key-scope";
 import { resultSchema } from "@/server/validation/gateway";
 import {
   DeviceMismatchError,
@@ -8,13 +10,23 @@ import {
   reportResult,
 } from "@/server/services/gateway-service";
 
+const RATE_LIMIT = 240;
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const apiKey = await authenticateRequest(request);
-  if (!apiKey) {
-    return jsonError(401, "unauthorized", "Missing or invalid API key");
+  const auth = await authorizeRequest(request, API_KEY_SCOPE.GATEWAY);
+  if (!auth.ok) {
+    return jsonError(auth.status, auth.code, auth.message);
+  }
+  const apiKey = auth.apiKey;
+
+  const rate = checkRateLimit(`result:${apiKey.id}`, RATE_LIMIT);
+  if (!rate.allowed) {
+    const res = jsonError(429, "rate_limited", "Too many requests; slow down");
+    res.headers.set("Retry-After", String(rate.retryAfterSeconds));
+    return res;
   }
 
   const { id } = await params;

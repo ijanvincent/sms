@@ -32,6 +32,8 @@ export async function verifySessionToken(
   try {
     const { payload } = await jwtVerify(token, getSecretKey(), {
       issuer: ISSUER,
+      // Pin the accepted algorithm so a forged token can't downgrade the alg.
+      algorithms: [ALG],
     });
     return payload;
   } catch {
