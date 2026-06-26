@@ -14,7 +14,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5432:5432"
+      # Bind to loopback only — the db is reached over the compose network by the
+      # `web`/`migrate` services; exposing it on all interfaces is unnecessary and
+      # widens the attack surface in a production deploy.
+      - "127.0.0.1:5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -60,7 +63,9 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
     ports:
-      - "3000:3000"
+      # Host port is configurable to avoid collisions when running multiple
+      # projects locally; the container always listens on 3000 internally.
+      - "${WEB_PORT:-3100}:3000"
 
 volumes:
   pgdata:

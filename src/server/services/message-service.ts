@@ -31,22 +31,29 @@ export async function enqueueMessage(
   const recipient = normalizePhMobile(input.recipient);
   if (!recipient) throw new InvalidRecipientError(input.recipient);
 
-  if (apiKey.dailyQuota !== null) {
-    const sentToday = await prisma.message.count({
-      where: { apiKeyId: apiKey.id, createdAt: { gte: startOfToday() } },
-    });
-    if (sentToday >= apiKey.dailyQuota) {
-      throw new DailyQuotaExceededError(apiKey.dailyQuota);
-    }
-  }
+  return prisma.$transaction(async (tx) => {
+    if (apiKey.dailyQuota !== null) {
+      // Lock this key's row so concurrent enqueues for the same key serialize:
+      // the count → insert check is then atomic and the quota cannot be
+      // overshot by a race (TOCTOU).
+      await tx.$queryRaw`SELECT id FROM "ApiKey" WHERE id = ${apiKey.id} FOR UPDATE`;
 
-  return prisma.message.create({
-    data: {
-      recipient,
-      body: input.body,
-      status: MESSAGE_STATUS.PENDING,
-      apiKeyId: apiKey.id,
-    },
+      const sentToday = await tx.message.count({
+        where: { apiKeyId: apiKey.id, createdAt: { gte: startOfToday() } },
+      });
+      if (sentToday >= apiKey.dailyQuota) {
+        throw new DailyQuotaExceededError(apiKey.dailyQuota);
+      }
+    }
+
+    return tx.message.create({
+      data: {
+        recipient,
+        body: input.body,
+        status: MESSAGE_STATUS.PENDING,
+        apiKeyId: apiKey.id,
+      },
+    });
   });
 }
 
