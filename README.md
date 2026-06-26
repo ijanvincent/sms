@@ -12,7 +12,7 @@ status back. A Twilio alternative you fully own.
 [![React](https://img.shields.io/badge/React-19-087EA4?logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org)
 [![Prisma](https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma)](https://www.prisma.io)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql)](https://www.postgresql.org)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-17-4169E1?logo=postgresql)](https://www.postgresql.org)
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker)](https://www.docker.com)
 
 </div>
@@ -57,7 +57,11 @@ lives in a **separate repository**.
   bounded retries (`attempts` / `maxAttempts`), and indexes tuned for the device claim query.
 - **Atomic claim & report** — the device's poll and result endpoints use
   `SELECT … FOR UPDATE` inside a transaction, eliminating double-send race conditions (TOCTOU).
-- **Per-key rate limiting** (30 req/min) and an optional **daily send quota** per API key.
+- **Per-key rate limiting** and an optional **daily send quota** per API key.
+- **Scoped API keys** — every key is either a `client` key (may only enqueue) or a `gateway` key
+  (may only claim and report), so a leaked key can never cross into the other role's surface.
+- **Self-healing queue** — a claim-timeout reaper returns messages stranded by a dead or offline
+  device back to `PENDING` (consuming a retry), so nothing is silently stuck.
 - **Secure auth on every layer** — `sk_live_`-prefixed API keys (only a SHA-256 hash is stored,
   compared in constant time) for the API; a single-admin JWT session cookie (httpOnly, SameSite=strict)
   for the dashboard, with the admin password hashed via `scrypt`.
@@ -112,9 +116,10 @@ npx prisma migrate deploy   # apply migrations
 ### 3. Create the admin account and a device
 
 ```bash
-npm run admin:create -- "admin" "<a-strong-password>"   # prints ADMIN_USERNAME / ADMIN_PASSWORD_HASH → put in .env
+npm run admin:create  -- "admin" "<a-strong-password>"  # prints ADMIN_USERNAME / ADMIN_PASSWORD_HASH → put in .env
 npm run device:create -- "My phone" "TM"                # registers a sender device, prints its deviceId
-npm run key:create   -- "My backend"                    # issues an API key (raw key shown once)
+npm run key:create    -- "My backend"                   # issues a client key (enqueue), raw key shown once
+npm run key:create    -- "My phone" gateway             # issues a gateway key for the Android sender
 ```
 
 ### 4. Run
@@ -134,6 +139,8 @@ docker compose up --build   # db + one-shot migrator + web, production-style
 ## API
 
 All API requests authenticate with a Bearer token: `Authorization: Bearer sk_live_…`.
+Keys are **scoped**: a `client` key may call `POST /api/v1/messages`, while a `gateway` key may
+call the gateway poll/result endpoints. Using a key outside its scope returns `403 insufficient_scope`.
 Responses are JSON; errors follow `{ "error": { "code": <string>, "message": <string>, "details"?: … } }`.
 
 ### Enqueue a message — `POST /api/v1/messages`
@@ -156,8 +163,10 @@ curl -X POST http://localhost:3000/api/v1/messages \
 
 | Method & path                                   | Purpose                                                             |
 | ----------------------------------------------- | ------------------------------------------------------------------ |
-| `POST /api/v1/gateway/poll`                     | Atomically claim a batch of pending messages for a device.         |
+| `POST /api/v1/gateway/poll`                     | Atomically claim a batch of pending messages for a device (also reaps stale claims). |
 | `POST /api/v1/gateway/messages/{id}/result`     | Report the outcome (`SENT` / `FAILED` + reason) of a claimed message. |
+
+These endpoints require a `gateway`-scoped key and are rate-limited per key.
 
 ## Message lifecycle
 
@@ -201,17 +210,23 @@ Never commit `.env`. Secrets and raw API keys are never logged.
 ## Security
 
 - API keys: only the SHA-256 hash is stored; presented keys are hashed and compared with
-  `timingSafeEqual`. Raw keys are shown once at creation and never again.
-- Dashboard: single-admin login, `scrypt`-hashed password, short-lived HS256 JWT in an
-  httpOnly, `SameSite=strict` cookie; all pages gated by an edge `proxy`.
+  `timingSafeEqual`. Raw keys are shown once at creation and never again. Each key is scoped
+  (`client` vs `gateway`) and may only reach its own endpoints.
+- Dashboard: single-admin login, `scrypt`-hashed password, short-lived HS256 JWT (algorithm-pinned
+  on verify) in an httpOnly, `SameSite=strict` cookie; pages gated by an edge `proxy` *and*
+  re-checked server-side in the dashboard layout. Login is throttled per caller with a global
+  spoof-proof backstop.
+- Hardening headers: a Content-Security-Policy plus `HSTS`, `X-Frame-Options: DENY`,
+  `X-Content-Type-Options: nosniff`, `Referrer-Policy`, and `Permissions-Policy` on every response.
 - Defense in depth: input validation at every boundary, per-key rate limiting, optional daily
-  quota, and atomic queue operations to prevent duplicate sends.
+  quota (enforced atomically), and atomic queue operations to prevent duplicate sends.
 
 ## Project status
 
-Active. The Android sender app lives in a separate repository. Roadmap items include a
-claim-timeout reaper (returning stuck `CLAIMED` messages to `PENDING`) and delivery webhooks.
+Active. The Android sender app lives in a separate repository. The claim-timeout reaper
+(returning stuck `CLAIMED` messages to `PENDING`) ships in this repo; roadmap items include
+a client-facing message-status endpoint and delivery webhooks.
 
 ## License
 
-See [`LICENSE`](LICENSE) if present; otherwise all rights reserved by the author.
+Released under the [MIT License](LICENSE).
