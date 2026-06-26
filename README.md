@@ -18,6 +18,8 @@ status back. A Twilio alternative you fully own and self-host.
 [![Docker](https://img.shields.io/badge/Docker-ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com)
 [![Status](https://img.shields.io/badge/status-active-success)](#roadmap)
 
+[Quickstart](#getting-started) · [API](#api) · [Architecture](#architecture) · [Lifecycle](#message-lifecycle) · [Security](#security)
+
 </div>
 
 ---
