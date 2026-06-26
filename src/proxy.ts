@@ -22,7 +22,8 @@ export async function proxy(request: NextRequest) {
 }
 
 // Match all pages but leave the bearer-authenticated API, Next internals, and
-// static assets untouched. The gateway API authenticates per-request by key.
+// static/metadata assets (favicon + app icon) untouched. The gateway API
+// authenticates per-request by key.
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)"],
 };
