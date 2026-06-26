@@ -46,6 +46,54 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Error-feedback shake for form fields (e.g. failed sign-in). */
+  --animate-shake: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+/* Circular ring loader: a faint track with a bright accent arc that sweeps
+   around. A conic gradient masked to a thin ring keeps it crisp at any size. */
+.spinner-ring {
+  --spinner-track: color-mix(in oklch, currentColor 16%, transparent);
+  --spinner-arc: oklch(0.78 0.13 185); /* brand-leaning cyan/teal accent */
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  background: conic-gradient(
+    from 0deg,
+    var(--spinner-track) 0deg,
+    var(--spinner-track) 90deg,
+    var(--spinner-arc) 320deg,
+    var(--spinner-arc) 360deg
+  );
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+  animation: spinner-rotate 0.7s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 :root {
