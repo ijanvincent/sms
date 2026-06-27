@@ -12,6 +12,13 @@
 #
 # Secrets come from `.env` on the VM (see .env.production.example) — never commit it.
 
+# Pin the project name so every deploy — run by hand or by the GitLab runner from
+# its own checkout directory — manages the SAME stack (containers + the pgdata
+# volume). Without this, Compose derives the name from the working directory, so a
+# CI deploy from a different path would spin up a DUPLICATE stack and orphan the
+# database.
+name: sms
+
 services:
   db:
     image: postgres:17-alpine
@@ -66,7 +73,11 @@ services:
       # exposed to the public internet directly.
       - "127.0.0.1:3000:3000"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health >/dev/null 2>&1 || exit 1"]
+      # Use 127.0.0.1, not "localhost": inside the container localhost resolves to
+      # IPv6 ::1 first, but the standalone server binds IPv4 0.0.0.0 only — so a
+      # localhost probe gets connection-refused and the container is wrongly marked
+      # unhealthy. Pinning IPv4 makes the probe hit the address the app listens on.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
