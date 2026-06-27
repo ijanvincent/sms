@@ -1,0 +1,100 @@
+name: CI/CD
+
+# Runs on the self-hosted runner installed on the production VM (label: sms-box).
+# Because the runner lives ON the box, "deploy" is a local `docker compose up` —
+# GitHub never needs inbound access to the server.
+#
+# Triggers:
+#   push -> main          : test -> build -> deploy  (the live deploy path)
+#   pull_request -> main  : test -> build           (validate only; NEVER deploys)
+#   workflow_dispatch     : test -> build -> deploy  (manual redeploy / proving)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# A single VM = one Docker daemon and one `sms` project. Serialize runs so two
+# deploys can't interleave build/migrate/up and corrupt the stack mid-flight.
+concurrency:
+  group: cicd-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  COMPOSE_FILE: docker-compose.prod.yml
+  # Production secrets live ONLY on the VM (owner-only file the runner can read),
+  # never in GitHub. Compose loads them via --env-file.
+  ENV_FILE: /home/ubuntu/sms/.env
+  # Immutable, per-commit image tags: a bad deploy can be rolled back to a prior
+  # SHA instead of an overwritten floating tag.
+  WEB_IMAGE: sms-web:${{ github.sha }}
+  MIGRATE_IMAGE: sms-migrate:${{ github.sha }}
+
+jobs:
+  test:
+    runs-on: [self-hosted, sms-box]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Run unit tests in the lightweight tester image
+        run: |
+          docker build --target tester -t sms-tester:${{ github.sha }} .
+          docker run --rm sms-tester:${{ github.sha }} npm test
+      - name: Remove the per-commit tester image
+        if: always()
+        run: docker rmi sms-tester:${{ github.sha }} 2>/dev/null || true
+
+  build:
+    needs: test
+    runs-on: [self-hosted, sms-box]
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build the production images (tagged with the commit SHA)
+        run: docker compose --env-file "$ENV_FILE" build
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, sms-box]
+    # Deploy only on real pushes to main / manual runs — never on pull requests.
+    if: github.event_name != 'pull_request'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Back up the database before migrations run
+        run: |
+          mkdir -p /home/ubuntu/backups
+          if docker ps --format '{{.Names}}' | grep -q '^sms-db-1$'; then
+            set -a; . "$ENV_FILE"; set +a
+            ts=$(date +%Y%m%d-%H%M%S)
+            docker exec sms-db-1 pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+              | gzip > "/home/ubuntu/backups/sms-${ts}.sql.gz"
+            echo "backup written: sms-${ts}.sql.gz"
+            # retain the 7 most recent backups
+            ls -1t /home/ubuntu/backups/sms-*.sql.gz | tail -n +8 | xargs -r rm -f
+          else
+            echo "db container not running yet (first deploy) — skipping backup"
+          fi
+
+      - name: Deploy (migrate init container runs, then web starts)
+        run: docker compose --env-file "$ENV_FILE" up -d --remove-orphans
+
+      - name: Smoke test — fail the deploy unless the app + DB are ready
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/api/ready || true)
+            if [ "$code" = "200" ]; then echo "ready ✓"; exit 0; fi
+            echo "attempt $i: /api/ready -> $code; retrying in 3s..."; sleep 3
+          done
+          echo "::error::app did not become ready in time"; docker compose logs --tail=40 web; exit 1
+
+      - name: Report container status
+        run: docker compose ps
+
+      - name: Prune dangling images, keep the 3 newest app images for rollback
+        run: |
+          docker image prune -f
+          for repo in sms-web sms-migrate; do
+            docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' \
+              | sort -k2 -r | awk 'NR>3 {print $1}' | xargs -r docker rmi -f 2>/dev/null || true
+          done

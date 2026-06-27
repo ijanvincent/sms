@@ -8,12 +8,9 @@ export interface OverviewStats {
 }
 
 export async function getOverviewStats(): Promise<OverviewStats> {
-  const [total, pending, claimed, sent, failed, deviceTotal, online] = await Promise.all([
-    prisma.message.count(),
-    prisma.message.count({ where: { status: MESSAGE_STATUS.PENDING } }),
-    prisma.message.count({ where: { status: MESSAGE_STATUS.CLAIMED } }),
-    prisma.message.count({ where: { status: MESSAGE_STATUS.SENT } }),
-    prisma.message.count({ where: { status: MESSAGE_STATUS.FAILED } }),
+  const [byStatus, deviceTotal, online] = await Promise.all([
+    // One GROUP BY instead of five separate COUNT(*) queries.
+    prisma.message.groupBy({ by: ["status"], _count: { _all: true } }),
     prisma.device.count(),
     prisma.device.count({
       where: {
@@ -22,8 +19,17 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     }),
   ]);
 
+  const countFor = (status: string) =>
+    byStatus.find((row) => row.status === status)?._count._all ?? 0;
+
   return {
-    messages: { total, pending, claimed, sent, failed },
+    messages: {
+      total: byStatus.reduce((sum, row) => sum + row._count._all, 0),
+      pending: countFor(MESSAGE_STATUS.PENDING),
+      claimed: countFor(MESSAGE_STATUS.CLAIMED),
+      sent: countFor(MESSAGE_STATUS.SENT),
+      failed: countFor(MESSAGE_STATUS.FAILED),
+    },
     devices: { total: deviceTotal, online },
   };
 }

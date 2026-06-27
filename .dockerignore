@@ -6,9 +6,14 @@ node_modules
 !.env.example
 npm-debug.log*
 README.md
+CLAUDE.md
 Dockerfile
 .dockerignore
 docker-compose.yml
+docker-compose.prod.yml
+.github
+docs
+scripts
 .agents
 skills-lock.json
 src/generated

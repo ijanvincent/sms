@@ -19,6 +19,17 @@ RUN npm ci --no-audit --no-fund \
   --fetch-retry-mintimeout=20000 \
   --fetch-retry-maxtimeout=180000
 
+# ---- tester: deps + source + Prisma client, for fast unit tests (no next build) ----
+# CI targets this stage to run vitest without paying the full production build cost.
+FROM base AS tester
+ENV NEXT_TELEMETRY_DISABLED=1
+# Build-time stand-in only; the DB-free unit tests never open a connection.
+ENV DATABASE_URL="postgresql://test:test@localhost:5432/test"
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npx prisma generate
+CMD ["npm", "test"]
+
 # ---- builder: generate Prisma client + build the standalone server ----
 FROM base AS builder
 ENV NEXT_TELEMETRY_DISABLED=1

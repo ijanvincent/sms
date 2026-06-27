@@ -20,7 +20,8 @@ const SEED_DEVICES: ReadonlyArray<{
     id: "seed-honor-tm",
     name: "Honor TM",
     carrier: "TM",
-    rawSim: "09551402058",
+    // Placeholder number — the real SIM self-registers via the Android gateway.
+    rawSim: "09171234567",
   },
 ];
 

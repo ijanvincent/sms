@@ -1,0 +1,86 @@
+# Production stack for the deployment VM.
+#
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# Differences from the local docker-compose.yml:
+#   - the web service binds to loopback only (127.0.0.1): the public entry point
+#     is Cloudflare Tunnel (added in a later phase), so nothing is exposed to the
+#     internet directly;
+#   - Postgres is never published off the host;
+#   - every long-running service restarts unless explicitly stopped and has a
+#     healthcheck.
+#
+# Secrets come from `.env` on the VM (see .env.production.example) — never commit it.
+
+# Pin the project name so every deploy — run by hand or by the CI runner from its
+# own checkout directory — manages the SAME stack (containers + the pgdata volume).
+# Without this, Compose derives the name from the working directory, so a CI deploy
+# from a different path would spin up a DUPLICATE stack and orphan the database.
+name: sms
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # One-shot init container: applies pending migrations, then exits. Gated on a
+  # healthy database. Uses the dedicated `migrator` image (full Prisma toolchain).
+  migrate:
+    image: ${MIGRATE_IMAGE:-sms-migrate:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+
+  web:
+    image: ${WEB_IMAGE:-sms-web:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+    ports:
+      # Loopback only: reachable on the VM (and by the Cloudflare Tunnel), never
+      # exposed to the public internet directly.
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      # Use 127.0.0.1, not "localhost": inside the container localhost resolves to
+      # IPv6 ::1 first, but the standalone server binds IPv4 0.0.0.0 only — so a
+      # localhost probe gets connection-refused and the container is wrongly marked
+      # unhealthy. Pinning IPv4 makes the probe hit the address the app listens on.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  pgdata:
