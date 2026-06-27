@@ -32,6 +32,9 @@ services:
       context: .
       dockerfile: Dockerfile
       target: migrator
+      # Optional local-only workaround: build over the host network so npm/registry
+      # DNS resolves on machines with flaky Docker-bridge DNS. Safe to remove if your
+      # environment builds fine without it (docker-compose.prod.yml does not use it).
       network: host
     restart: "no"
     depends_on:
@@ -45,8 +48,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runner
-      # Use the host network during build so npm/registry DNS resolves reliably
-      # (the default build network had transient DNS failures in this environment).
+      # Optional local-only workaround (see `migrate` above): host-network build to
+      # dodge flaky Docker-bridge DNS. Remove if your environment doesn't need it.
       network: host
     restart: unless-stopped
     depends_on:

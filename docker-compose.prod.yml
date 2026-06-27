@@ -1,4 +1,4 @@
-# Production stack for the Oracle Cloud "Always Free" VM.
+# Production stack for the deployment VM.
 #
 #   docker compose -f docker-compose.prod.yml up -d --build
 #
@@ -12,11 +12,10 @@
 #
 # Secrets come from `.env` on the VM (see .env.production.example) — never commit it.
 
-# Pin the project name so every deploy — run by hand or by the GitLab runner from
-# its own checkout directory — manages the SAME stack (containers + the pgdata
-# volume). Without this, Compose derives the name from the working directory, so a
-# CI deploy from a different path would spin up a DUPLICATE stack and orphan the
-# database.
+# Pin the project name so every deploy — run by hand or by the CI runner from its
+# own checkout directory — manages the SAME stack (containers + the pgdata volume).
+# Without this, Compose derives the name from the working directory, so a CI deploy
+# from a different path would spin up a DUPLICATE stack and orphan the database.
 name: sms
 
 services:
