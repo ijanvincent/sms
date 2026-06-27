@@ -58,6 +58,12 @@ jobs:
     runs-on: [self-hosted, sms-box]
     # Deploy only on real pushes to main / manual runs — never on pull requests.
     if: github.event_name != 'pull_request'
+    # Registers a GitHub "production" deployment (shown in the repo's Environments /
+    # Deployments UI) with a link to the live site. The URL is resolved at runtime
+    # because the Cloudflare Quick Tunnel hostname is ephemeral.
+    environment:
+      name: production
+      url: ${{ steps.tunnel.outputs.url }}
     steps:
       - uses: actions/checkout@v5
 
@@ -87,6 +93,14 @@ jobs:
             echo "attempt $i: /api/ready -> $code; retrying in 3s..."; sleep 3
           done
           echo "::error::app did not become ready in time"; docker compose logs --tail=40 web; exit 1
+
+      - name: Resolve the live Cloudflare URL for the deployment record
+        id: tunnel
+        run: |
+          url=$(sudo journalctl -u cloudflared -o cat 2>/dev/null \
+            | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | tail -1)
+          echo "resolved: ${url:-<none>}"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
 
       - name: Report container status
         run: docker compose ps
