@@ -23,21 +23,31 @@ status back. A Twilio alternative you fully own and self-host.
 
 ## Table of contents
 
-- [Why](#why)
-- [Screenshots](#screenshots)
-- [Architecture](#architecture)
-- [Features](#features)
-- [Tech stack](#tech-stack)
-- [Project structure](#project-structure)
-- [Getting started](#getting-started)
-- [API reference](#api-reference)
-- [Message lifecycle](#message-lifecycle)
-- [Testing](#testing)
-- [Scripts](#scripts)
-- [Configuration](#configuration)
-- [Security](#security)
-- [Roadmap](#roadmap)
-- [License](#license)
+- [📱 SMS Gateway](#-sms-gateway)
+  - [Table of contents](#table-of-contents)
+  - [Why](#why)
+  - [Screenshots](#screenshots)
+  - [Architecture](#architecture)
+  - [Features](#features)
+  - [Tech stack](#tech-stack)
+  - [Project structure](#project-structure)
+  - [Getting started](#getting-started)
+    - [Prerequisites](#prerequisites)
+    - [1. Install \& configure](#1-install--configure)
+    - [2. Start PostgreSQL and apply migrations](#2-start-postgresql-and-apply-migrations)
+    - [3. Create the admin account, a device, and API keys](#3-create-the-admin-account-a-device-and-api-keys)
+    - [4. Run](#4-run)
+    - [Full stack with Docker](#full-stack-with-docker)
+  - [API reference](#api-reference)
+    - [Enqueue a message — `POST /api/v1/messages`](#enqueue-a-message--post-apiv1messages)
+    - [Gateway endpoints — used by the Android sender](#gateway-endpoints--used-by-the-android-sender)
+  - [Message lifecycle](#message-lifecycle)
+  - [Testing](#testing)
+  - [Scripts](#scripts)
+  - [Configuration](#configuration)
+  - [Security](#security)
+  - [Roadmap](#roadmap)
+  - [License](#license)
 
 ## Why
 
@@ -326,7 +336,7 @@ Configuration is read from `.env` (see [`.env.example`](.env.example)). Key vari
 
 ## Roadmap
 
-The project is **active**. The Android sender app lives in a separate repository. The
+The project/system is **active**. The Android sender app lives in a separate repository. The
 claim-timeout reaper (returning stuck `CLAIMED` messages to `PENDING`) ships in this repo.
 
 Planned:
