@@ -66,9 +66,12 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
     ports:
-      # Host port is configurable to avoid collisions when running multiple
-      # projects locally; the container always listens on 3000 internally.
-      - "${WEB_PORT:-3100}:3000"
+      # Bind to loopback only: the public entrypoint is a Cloudflare Tunnel whose
+      # `cloudflared` connects from the same host, so the port never needs to be
+      # reachable from the LAN or the public internet. Host port stays
+      # configurable to avoid collisions when running multiple projects locally;
+      # the container always listens on 3000 internally.
+      - "127.0.0.1:${WEB_PORT:-3100}:3000"
 
 volumes:
   pgdata:
