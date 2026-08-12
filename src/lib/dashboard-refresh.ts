@@ -1,4 +1,4 @@
-export const DASHBOARD_REFRESH_INTERVAL_MS = 5_000;
+export const DASHBOARD_REFRESH_INTERVAL_MS = 3_000;
 
 export interface DashboardRefreshState {
   visible: boolean;
