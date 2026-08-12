@@ -50,6 +50,7 @@ jobs:
             -e PROVISION_CLIENT_DAILY_QUOTA \
             -e PROVISION_OUTPUT=/output/credentials.json \
             -v "$PROVISION_OUTPUT_DIR:/output" \
+            -v "$GITHUB_WORKSPACE/scripts:/app/scripts:ro" \
             migrate npx tsx scripts/provision-sender.ts
           chmod 600 "$PROVISION_OUTPUT_DIR/credentials.json"
 
