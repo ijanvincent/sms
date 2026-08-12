@@ -1,6 +1,8 @@
 import { Smartphone } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CopyButton } from "@/components/ui/copy-button";
+import { CreateDeviceForm } from "@/components/devices/create-device-form";
 import {
   Table,
   TableBody,
@@ -29,19 +31,32 @@ export default async function DevicesPage() {
         description="Registered sender phones and their connection status."
       />
 
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Register a device</CardTitle>
+          <CardDescription>
+            Creates the Device ID the sender app polls with.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreateDeviceForm />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent>
           {devices.length === 0 ? (
             <EmptyState
               icon={Smartphone}
               title="No devices registered"
-              description="Register a phone with the gateway app to start sending messages."
+              description="Register a phone above to start sending messages."
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Device</TableHead>
+                  <TableHead>Device ID</TableHead>
                   <TableHead>Carrier</TableHead>
                   <TableHead>SIM</TableHead>
                   <TableHead>Status</TableHead>
@@ -56,6 +71,18 @@ export default async function DevicesPage() {
                   return (
                     <TableRow key={device.id}>
                       <TableCell className="font-medium">{device.name}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <code className="font-mono text-xs text-muted-foreground">
+                            {device.id}
+                          </code>
+                          <CopyButton
+                            value={device.id}
+                            size="icon-xs"
+                            variant="ghost"
+                          />
+                        </span>
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {device.carrier ?? "—"}
                       </TableCell>

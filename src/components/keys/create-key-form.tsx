@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Copy, TriangleAlert } from "lucide-react";
+import { TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { CopyField } from "@/components/ui/copy-field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
@@ -27,7 +28,6 @@ interface CreatedKey {
 
 export function CreateKeyForm() {
   const router = useRouter();
-  const rawKeyRef = useRef<HTMLInputElement>(null);
 
   const [label, setLabel] = useState("");
   const [scope, setScope] = useState<ApiKeyScope>(API_KEY_SCOPE.CLIENT);
@@ -35,7 +35,6 @@ export function CreateKeyForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreatedKey | null>(null);
-  const [copied, setCopied] = useState(false);
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -70,26 +69,10 @@ export function CreateKeyForm() {
     }
 
     setCreated({ label: data.label, scope: data.scope, raw: data.raw });
-    setCopied(false);
     setLabel("");
     setDailyQuota("");
     setSubmitting(false);
     router.refresh();
-  }
-
-  async function onCopy() {
-    if (!created) return;
-
-    // The dashboard is reachable over plain http on a LAN address during
-    // on-device testing, and navigator.clipboard is undefined outside a secure
-    // context. Fall back to selecting the field so the key stays copyable.
-    try {
-      await navigator.clipboard.writeText(created.raw);
-      setCopied(true);
-    } catch {
-      rawKeyRef.current?.select();
-      setError("Copy unavailable here — the key is selected, copy it manually.");
-    }
   }
 
   if (created) {
@@ -103,26 +86,7 @@ export function CreateKeyForm() {
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Input
-            ref={rawKeyRef}
-            readOnly
-            value={created.raw}
-            aria-label={`API key for ${created.label}`}
-            onFocus={(e) => e.currentTarget.select()}
-            className="font-mono text-xs"
-          />
-          <Button type="button" variant="outline" size="lg" onClick={onCopy}>
-            {copied ? <Check /> : <Copy />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
-        </div>
-
-        {error && (
-          <p role="alert" className="text-sm text-destructive">
-            {error}
-          </p>
-        )}
+        <CopyField value={created.raw} label={`API key for ${created.label}`} />
 
         <Button
           type="button"
