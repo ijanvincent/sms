@@ -110,6 +110,17 @@ export async function claimPendingMessages(
   `;
 }
 
+export async function disconnectDevice(deviceId: string): Promise<void> {
+  const device = await prisma.device.findUnique({ where: { id: deviceId } });
+  if (!device) throw new DeviceNotFoundError(deviceId);
+  if (!device.enabled) throw new DeviceDisabledError(deviceId);
+
+  await prisma.device.update({
+    where: { id: deviceId },
+    data: { lastSeenAt: null },
+  });
+}
+
 export async function reportResult(
   messageId: string,
   deviceId: string,

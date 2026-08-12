@@ -14,6 +14,7 @@ export async function getOverviewStats(): Promise<OverviewStats> {
     prisma.device.count(),
     prisma.device.count({
       where: {
+        enabled: true,
         lastSeenAt: { gte: new Date(Date.now() - DEVICE_ONLINE_WINDOW_MS) },
       },
     }),

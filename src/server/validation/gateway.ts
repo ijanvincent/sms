@@ -7,6 +7,10 @@ export const pollSchema = z.object({
   batchSize: z.number().int().min(1).max(50).optional().default(10),
 });
 
+export const disconnectSchema = z.object({
+  deviceId: z.string().min(1, "deviceId is required"),
+});
+
 export const resultSchema = z.object({
   deviceId: z.string().min(1, "deviceId is required"),
   status: z.enum([MESSAGE_STATUS.SENT, MESSAGE_STATUS.FAILED]),
@@ -14,4 +18,5 @@ export const resultSchema = z.object({
 });
 
 export type PollInput = z.infer<typeof pollSchema>;
+export type DisconnectInput = z.infer<typeof disconnectSchema>;
 export type ResultInput = z.infer<typeof resultSchema>;

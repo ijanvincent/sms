@@ -14,8 +14,8 @@ const ready: DashboardRefreshState = {
 };
 
 describe("dashboard refresh policy", () => {
-  it("uses a five-second live update cadence", () => {
-    expect(DASHBOARD_REFRESH_INTERVAL_MS).toBe(5_000);
+  it("uses a three-second live update cadence", () => {
+    expect(DASHBOARD_REFRESH_INTERVAL_MS).toBe(3_000);
   });
 
   it("allows refreshes while the visible dashboard is idle and online", () => {

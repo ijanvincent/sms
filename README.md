@@ -244,6 +244,7 @@ Require a **`gateway`**-scoped key; rate-limited per key.
 | Method & path                               | Purpose                                                                |
 | ------------------------------------------- | ---------------------------------------------------------------------- |
 | `POST /api/v1/gateway/poll`                 | Atomically claim a batch of pending messages for a device (also reaps stale claims). |
+| `POST /api/v1/gateway/disconnect`           | Mark a sender device offline immediately during a clean gateway stop.                 |
 | `POST /api/v1/gateway/messages/{id}/result` | Report the outcome (`SENT` / `FAILED` + reason) of a claimed message.  |
 
 ## Message lifecycle
