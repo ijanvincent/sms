@@ -1,16 +1,17 @@
 import "dotenv/config";
 
-import { generateApiKey } from "@/lib/auth/api-key";
 import {
   API_KEY_SCOPE,
   ALL_API_KEY_SCOPES,
   isApiKeyScope,
 } from "@/lib/auth/api-key-scope";
 import { prisma } from "@/lib/db";
+import { createApiKey } from "@/server/services/api-key-service";
 
 // Usage: npm run key:create -- "label" [scope] [dailyQuota]
 //   scope: "client" (enqueue, default) or "gateway" (claim/report — the sender).
 // Prints the raw key once; only its hash is stored. Omit the quota for unlimited.
+// The dashboard's /keys page issues keys through the same service.
 async function main() {
   const label = process.argv[2] ?? "default";
 
@@ -27,10 +28,7 @@ async function main() {
     process.exit(1);
   }
 
-  const { raw, hashedKey, prefix } = generateApiKey();
-  await prisma.apiKey.create({
-    data: { label, hashedKey, prefix, scope, dailyQuota },
-  });
+  const { raw } = await createApiKey({ label, scope, dailyQuota });
   console.log(raw);
   await prisma.$disconnect();
 }

@@ -1,6 +1,7 @@
 import { KeyRound } from "lucide-react";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { CreateKeyForm } from "@/components/keys/create-key-form";
 import {
   Table,
   TableBody,
@@ -28,13 +29,25 @@ export default async function ApiKeysPage() {
         description="Credentials authorized to enqueue messages. Only the key prefix is shown — the secret is never stored in clear text."
       />
 
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Issue a key</CardTitle>
+          <CardDescription>
+            The secret is shown once, at creation, and never again.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CreateKeyForm />
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent>
           {keys.length === 0 ? (
             <EmptyState
               icon={KeyRound}
               title="No API keys"
-              description="Create a key with the key:create script to let a client authenticate."
+              description="Issue one above to let a client or the sender app authenticate."
             />
           ) : (
             <Table>
