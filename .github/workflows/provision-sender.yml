@@ -1,0 +1,67 @@
+name: Provision production sender
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Dashboard name for the Android sender
+        required: true
+        type: string
+      carrier:
+        description: Mobile carrier label
+        required: false
+        default: TM
+        type: string
+      client_daily_quota:
+        description: Maximum messages accepted per day by the new client key
+        required: true
+        default: "100"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  provision:
+    runs-on: [self-hosted, sms-box]
+    environment: production
+    env:
+      PROVISION_OUTPUT_DIR: ${{ runner.temp }}/sms-provision-${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Create device and scoped credentials
+        env:
+          COMPOSE_FILE: docker-compose.prod.yml
+          ENV_FILE: /home/ubuntu/sms/.env
+          MIGRATE_IMAGE: sms-migrate:${{ github.sha }}
+          PROVISION_NAME: ${{ inputs.name }}
+          PROVISION_CARRIER: ${{ inputs.carrier }}
+          PROVISION_CLIENT_DAILY_QUOTA: ${{ inputs.client_daily_quota }}
+        run: |
+          install -d -m 700 "$PROVISION_OUTPUT_DIR"
+          docker compose --env-file "$ENV_FILE" run --rm \
+            --user "$(id -u):$(id -g)" \
+            -e PROVISION_NAME \
+            -e PROVISION_CARRIER \
+            -e PROVISION_CLIENT_DAILY_QUOTA \
+            -e PROVISION_OUTPUT=/output/credentials.json \
+            -v "$PROVISION_OUTPUT_DIR:/output" \
+            migrate npx tsx scripts/provision-sender.ts
+          chmod 600 "$PROVISION_OUTPUT_DIR/credentials.json"
+
+      - name: Upload one-time credentials
+        uses: actions/upload-artifact@v4
+        with:
+          name: sender-credentials-${{ github.run_id }}
+          path: ${{ env.PROVISION_OUTPUT_DIR }}/credentials.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Remove credentials from the runner
+        if: always()
+        run: |
+          if [ -d "$PROVISION_OUTPUT_DIR" ]; then
+            find "$PROVISION_OUTPUT_DIR" -type f -exec shred -u {} +
+            rmdir "$PROVISION_OUTPUT_DIR"
+          fi
