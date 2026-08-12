@@ -66,12 +66,14 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
     ports:
-      # Bind to loopback only: the public entrypoint is a Cloudflare Tunnel whose
-      # `cloudflared` connects from the same host, so the port never needs to be
-      # reachable from the LAN or the public internet. Host port stays
-      # configurable to avoid collisions when running multiple projects locally;
-      # the container always listens on 3000 internally.
-      - "127.0.0.1:${WEB_PORT:-3100}:3000"
+      # Loopback by default: in a deploy the public entrypoint is a Cloudflare
+      # Tunnel whose `cloudflared` connects from the same host, so the port never
+      # needs to be reachable off-box. WEB_BIND opens it to the LAN (0.0.0.0) for
+      # on-device testing — a real phone cannot reach 127.0.0.1 — and is expected
+      # to stay unset everywhere else. Host port stays configurable to avoid
+      # collisions when running multiple projects locally; the container always
+      # listens on 3000 internally.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3100}:3000"
 
 volumes:
   pgdata:
