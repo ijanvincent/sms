@@ -1,5 +1,29 @@
 import { prisma } from "@/lib/db";
 
+export interface CreateDeviceInput {
+  name: string;
+  carrier?: string | null;
+  simNumber?: string | null;
+}
+
+export interface CreatedDevice {
+  id: string;
+  name: string;
+}
+
+// The generated id is what the sender app polls with, so it is the one value
+// the operator has to carry over to the phone by hand.
+export async function createDevice({
+  name,
+  carrier = null,
+  simNumber = null,
+}: CreateDeviceInput): Promise<CreatedDevice> {
+  return prisma.device.create({
+    data: { name, carrier, simNumber },
+    select: { id: true, name: true },
+  });
+}
+
 export interface DeviceListItem {
   id: string;
   name: string;
