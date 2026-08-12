@@ -60,7 +60,7 @@ export function CreateDeviceForm() {
 
   if (registered) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-live-refresh-pause="true">
         <p className="text-sm">
           <span className="font-medium">{registered.name}</span> is registered.
           Paste this Device ID into the sender app.
@@ -81,7 +81,15 @@ export function CreateDeviceForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4"
+      data-live-refresh-pause={
+        submitting || name !== "" || carrier !== "" || simNumber !== ""
+          ? "true"
+          : undefined
+      }
+    >
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <label htmlFor="device-name" className="text-sm font-medium">

@@ -77,7 +77,7 @@ export function CreateKeyForm() {
 
   if (created) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-live-refresh-pause="true">
         <div className="flex items-start gap-2 text-sm">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-destructive" />
           <p>
@@ -104,7 +104,15 @@ export function CreateKeyForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form
+      onSubmit={onSubmit}
+      className="space-y-4"
+      data-live-refresh-pause={
+        submitting || label !== "" || dailyQuota !== "" || scope !== API_KEY_SCOPE.CLIENT
+          ? "true"
+          : undefined
+      }
+    >
       <div className="grid gap-4 sm:grid-cols-[2fr_1fr_1fr]">
         <div className="space-y-2">
           <label htmlFor="key-label" className="text-sm font-medium">
