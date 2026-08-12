@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/layout/sidebar";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { DashboardLiveRefresh } from "@/components/layout/dashboard-live-refresh";
 import { SESSION_COOKIE, verifySessionToken } from "@/lib/auth/session";
 
 export default async function DashboardLayout({
@@ -19,7 +20,10 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen flex-col md:flex-row">
       <Sidebar />
       <MobileNav />
-      <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+      <main className="min-w-0 flex-1 overflow-y-auto">
+        {children}
+        <DashboardLiveRefresh />
+      </main>
     </div>
   );
 }
