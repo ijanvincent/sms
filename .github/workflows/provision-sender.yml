@@ -25,10 +25,14 @@ jobs:
   provision:
     runs-on: [self-hosted, sms-box]
     environment: production
-    env:
-      PROVISION_OUTPUT_DIR: ${{ runner.temp }}/sms-provision-${{ github.run_id }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Prepare protected output directory
+        run: |
+          output_dir="$RUNNER_TEMP/sms-provision-${GITHUB_RUN_ID}"
+          install -d -m 700 "$output_dir"
+          echo "PROVISION_OUTPUT_DIR=$output_dir" >> "$GITHUB_ENV"
 
       - name: Create device and scoped credentials
         env:
@@ -39,7 +43,6 @@ jobs:
           PROVISION_CARRIER: ${{ inputs.carrier }}
           PROVISION_CLIENT_DAILY_QUOTA: ${{ inputs.client_daily_quota }}
         run: |
-          install -d -m 700 "$PROVISION_OUTPUT_DIR"
           docker compose --env-file "$ENV_FILE" run --rm \
             --user "$(id -u):$(id -g)" \
             -e PROVISION_NAME \
