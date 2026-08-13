@@ -1,4 +1,8 @@
-export const DASHBOARD_REFRESH_INTERVAL_MS = 3_000;
+// WebSocket events refresh immediately. This slower timer is only reconciliation
+// insurance for a dropped event or a temporarily unavailable realtime sidecar.
+export const DASHBOARD_REFRESH_INTERVAL_MS = 30_000;
+export const REALTIME_RECONNECT_INITIAL_MS = 1_000;
+export const REALTIME_RECONNECT_MAX_MS = 30_000;
 
 export interface DashboardRefreshState {
   visible: boolean;

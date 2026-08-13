@@ -67,10 +67,8 @@ services:
       AUTH_SECRET: ${AUTH_SECRET}
       ADMIN_USERNAME: ${ADMIN_USERNAME}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
-    ports:
-      # Loopback only: reachable on the VM (and by the Cloudflare Tunnel), never
-      # exposed to the public internet directly.
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
     healthcheck:
       # Use 127.0.0.1, not "localhost": inside the container localhost resolves to
       # IPv6 ::1 first, but the standalone server binds IPv4 0.0.0.0 only — so a
@@ -81,6 +79,47 @@ services:
       timeout: 5s
       retries: 3
       start_period: 40s
+
+  realtime:
+    image: ${REALTIME_IMAGE:-sms-realtime:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: realtime
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      AUTH_SECRET: ${AUTH_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  proxy:
+    image: ${PROXY_IMAGE:-sms-proxy:local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: proxy
+    restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   pgdata:

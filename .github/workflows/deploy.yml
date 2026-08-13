@@ -31,6 +31,8 @@ env:
   # SHA instead of an overwritten floating tag.
   WEB_IMAGE: sms-web:${{ github.sha }}
   MIGRATE_IMAGE: sms-migrate:${{ github.sha }}
+  REALTIME_IMAGE: sms-realtime:${{ github.sha }}
+  PROXY_IMAGE: sms-proxy:${{ github.sha }}
 
 jobs:
   test:
@@ -59,6 +61,33 @@ jobs:
       - uses: actions/checkout@v5
       - name: Build the production images (tagged with the commit SHA)
         run: docker compose --env-file "$ENV_FILE" build
+      - name: Smoke test the realtime image process
+        run: |
+          if ! docker network inspect sms_default >/dev/null 2>&1; then
+            echo "sms_default does not exist yet (first deploy) — skipping runtime smoke test"
+            exit 0
+          fi
+          set -a; . "$ENV_FILE"; set +a
+          container="sms-realtime-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker run -d --name "$container" --network sms_default \
+            -e "DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public" \
+            -e "AUTH_SECRET=${AUTH_SECRET}" \
+            "$REALTIME_IMAGE"
+          for i in $(seq 1 10); do
+            if docker logs "$container" 2>&1 | grep -q "Realtime WebSocket hub listening"; then
+              echo "realtime sidecar started successfully"
+              exit 0
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "$container")" != "true" ]; then
+              docker logs "$container"
+              exit 1
+            fi
+            sleep 1
+          done
+          docker logs "$container"
+          echo "realtime sidecar did not become ready"
+          exit 1
 
   deploy:
     needs: build
@@ -92,6 +121,12 @@ jobs:
       - name: Deploy (migrate init container runs, then web starts)
         run: docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
+      - name: Diagnose failed container startup
+        if: failure()
+        run: |
+          docker compose --env-file "$ENV_FILE" ps -a
+          docker compose --env-file "$ENV_FILE" logs --tail=80 web realtime proxy migrate
+
       - name: Smoke test — fail the deploy unless the app + DB are ready
         run: |
           for i in $(seq 1 20); do
@@ -115,7 +150,7 @@ jobs:
       - name: Prune dangling images, keep the 3 newest app images for rollback
         run: |
           docker image prune -f
-          for repo in sms-web sms-migrate; do
+          for repo in sms-web sms-migrate sms-realtime sms-proxy; do
             docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' \
               | sort -k2 -r | awk 'NR>3 {print $1}' | xargs -r docker rmi -f 2>/dev/null || true
           done
