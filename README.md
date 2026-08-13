@@ -71,18 +71,14 @@ flowchart LR
 
     subgraph repo["This repository — control plane"]
         API["Next.js API + Dashboard<br/>validate · authorize · rate-limit · enqueue"]
-        RT["Realtime hub<br/>WebSocket wake-ups + UI events"]
         Queue[("PostgreSQL<br/>message queue")]
         API --> Queue
-        Queue -. "LISTEN / NOTIFY" .-> RT
     end
 
     Sender["Android sender<br/><i>(separate repo)</i>"]
     Phone["📱 Recipient"]
 
     Client -->|"POST /api/v1/messages"| API
-    RT -. "queue available" .-> Sender
-    RT -. "state changed" .-> API
     Queue -->|"claim pending batch"| Sender
     Sender -->|"report SENT / FAILED"| Queue
     Sender -->|"SMS via SIM"| Phone
@@ -90,12 +86,8 @@ flowchart LR
 
 - **Control plane (this repo)** — Next.js 16 App Router, React 19, TypeScript, Tailwind v4,
   shadcn/ui. Prisma 7 (driver-adapter model over `@prisma/adapter-pg`) on PostgreSQL.
-- **Realtime hub** — an authenticated WebSocket sidecar translates PostgreSQL commit events into
-  immediate Android wake-ups and dashboard refreshes. Events are hints; clients reconcile through
-  REST, so a disconnected socket cannot lose queue state.
-- **Sender (separate repo)** — an Android/Kotlin foreground service that wakes immediately over
-  WebSocket, retains timed HTTP polling as a fallback, sends through the default SIM, and reports
-  delivery back.
+- **Sender (separate repo)** — an Android/Kotlin foreground service that polls the gateway,
+  sends via the device's default SMS SIM, and reports delivery back.
 
 ## Features
 
@@ -117,8 +109,6 @@ flowchart LR
 - **PH mobile normalization** — any input form (`09xx`, `+63…`, `63…`, `9xx`) is normalized to
   E.164 at the API boundary before it is persisted.
 - **Operational dashboard** — live queue stats, recent messages, devices, and API-key management.
-- **Realtime synchronization** — same-origin WebSockets update the dashboard and wake the Android
-  sender immediately, with authenticated reconnect and periodic HTTP reconciliation.
 - **Production Docker image** — multi-stage build, standalone Next.js output, one-shot migrator,
   non-root runtime.
 
@@ -132,8 +122,7 @@ flowchart LR
 | Validation   | Zod                                                               |
 | Auth         | `jose` (HS256 JWT cookie) + Node `scrypt`; SHA-256 hashed API keys |
 | Tests        | Vitest                                                            |
-| Realtime     | WebSocket (`ws`) + PostgreSQL `LISTEN` / `NOTIFY`                  |
-| Deployment   | Docker Compose + nginx reverse proxy                              |
+| Deployment   | Docker / docker-compose                                           |
 
 ## Project structure
 
@@ -154,8 +143,6 @@ src/
 └─ generated/prisma/    # generated Prisma client (gitignored)
 
 prisma/                 # schema.prisma + migrations
-realtime/               # authenticated WebSocket hub
-deploy/                 # nginx HTTP/WebSocket reverse-proxy configuration
 scripts/                # admin / device / API-key CLIs
 ```
 
@@ -218,8 +205,8 @@ docker compose up --build   # db + one-shot migrator + web, production-style
 ```
 
 The web service is published on `WEB_PORT` (default `3100`) → **http://localhost:3100**. The
-nginx entry point listens on `3000` internally and routes `/ws/*` to the realtime sidecar; all
-other traffic goes to Next.js. `WEB_PORT` only controls the host mapping.
+container always listens on `3000` internally; `WEB_PORT` only sets the host mapping so it never
+collides with a local `next dev` on `3000`.
 
 ## API reference
 
@@ -259,11 +246,6 @@ Require a **`gateway`**-scoped key; rate-limited per key.
 | `POST /api/v1/gateway/poll`                 | Atomically claim a batch of pending messages for a device (also reaps stale claims). |
 | `POST /api/v1/gateway/disconnect`           | Mark a sender device offline immediately during a clean gateway stop.                 |
 | `POST /api/v1/gateway/messages/{id}/result` | Report the outcome (`SENT` / `FAILED` + reason) of a claimed message.  |
-
-The Android sender also opens `GET /ws/gateway?deviceId=…` as a WebSocket with its gateway Bearer
-key. A `queue.available` event triggers an immediate HTTP poll. The dashboard connects to
-`/ws/dashboard` with its existing session cookie and refreshes on committed message/device events.
-Neither channel carries authoritative message bodies or replaces the REST contract.
 
 ## Message lifecycle
 
