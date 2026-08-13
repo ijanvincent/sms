@@ -5,8 +5,6 @@
 #   builder  -> prisma generate + next build (standalone)
 #   migrator -> one-shot image that applies DB migrations (full toolchain)
 #   runner   -> slim runtime image serving the app
-#   realtime -> authenticated WebSocket + PostgreSQL notification sidecar
-#   proxy    -> one HTTP/WebSocket entry point for Cloudflare Tunnel
 
 FROM node:22-alpine AS base
 WORKDIR /app
@@ -71,21 +69,3 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 EXPOSE 3000
 CMD ["node", "server.js"]
-
-# ---- realtime: WebSocket wake-ups backed by PostgreSQL LISTEN/NOTIFY ----
-FROM base AS realtime
-ENV NODE_ENV=production
-ENV REALTIME_PORT=3001
-COPY --from=deps /app/node_modules ./node_modules
-COPY realtime ./realtime
-COPY src/lib/realtime-protocol.ts ./src/lib/realtime-protocol.ts
-RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 realtime
-USER realtime
-EXPOSE 3001
-CMD ["./node_modules/.bin/tsx", "realtime/server.ts"]
-
-# ---- proxy: normal HTTP to Next.js, WebSocket upgrades to realtime ----
-FROM nginx:1.27-alpine AS proxy
-COPY deploy/nginx.conf /etc/nginx/nginx.conf
-EXPOSE 3000

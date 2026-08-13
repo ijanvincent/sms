@@ -31,8 +31,6 @@ env:
   # SHA instead of an overwritten floating tag.
   WEB_IMAGE: sms-web:${{ github.sha }}
   MIGRATE_IMAGE: sms-migrate:${{ github.sha }}
-  REALTIME_IMAGE: sms-realtime:${{ github.sha }}
-  PROXY_IMAGE: sms-proxy:${{ github.sha }}
 
 jobs:
   test:
@@ -117,7 +115,7 @@ jobs:
       - name: Prune dangling images, keep the 3 newest app images for rollback
         run: |
           docker image prune -f
-          for repo in sms-web sms-migrate sms-realtime sms-proxy; do
+          for repo in sms-web sms-migrate; do
             docker images "$repo" --format '{{.ID}} {{.CreatedAt}}' \
               | sort -k2 -r | awk 'NR>3 {print $1}' | xargs -r docker rmi -f 2>/dev/null || true
           done

@@ -14,8 +14,8 @@ const ready: DashboardRefreshState = {
 };
 
 describe("dashboard refresh policy", () => {
-  it("keeps a slow reconciliation fallback behind realtime events", () => {
-    expect(DASHBOARD_REFRESH_INTERVAL_MS).toBe(30_000);
+  it("uses a three-second live update cadence", () => {
+    expect(DASHBOARD_REFRESH_INTERVAL_MS).toBe(3_000);
   });
 
   it("allows refreshes while the visible dashboard is idle and online", () => {
