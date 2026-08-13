@@ -112,8 +112,6 @@ services:
     depends_on:
       web:
         condition: service_healthy
-      realtime:
-        condition: service_healthy
     ports:
       - "127.0.0.1:3000:3000"
     healthcheck:

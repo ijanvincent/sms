@@ -98,8 +98,6 @@ services:
     depends_on:
       web:
         condition: service_started
-      realtime:
-        condition: service_healthy
     ports:
       - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-3100}:3000"
 

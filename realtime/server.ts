@@ -214,8 +214,15 @@ async function shutdown(): Promise<void> {
 process.on("SIGINT", () => void shutdown().finally(() => process.exit()));
 process.on("SIGTERM", () => void shutdown().finally(() => process.exit()));
 
-await listener.connect();
-await listener.query(`LISTEN ${DATABASE_CHANNEL}`);
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Realtime WebSocket hub listening on :${PORT}`);
+async function main(): Promise<void> {
+  await listener.connect();
+  await listener.query(`LISTEN ${DATABASE_CHANNEL}`);
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`Realtime WebSocket hub listening on :${PORT}`);
+  });
+}
+
+void main().catch((error) => {
+  console.error("Realtime startup failed", error);
+  process.exit(1);
 });

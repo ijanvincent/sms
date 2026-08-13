@@ -94,6 +94,12 @@ jobs:
       - name: Deploy (migrate init container runs, then web starts)
         run: docker compose --env-file "$ENV_FILE" up -d --remove-orphans
 
+      - name: Diagnose failed container startup
+        if: failure()
+        run: |
+          docker compose --env-file "$ENV_FILE" ps -a
+          docker compose --env-file "$ENV_FILE" logs --tail=80 web realtime proxy migrate
+
       - name: Smoke test — fail the deploy unless the app + DB are ready
         run: |
           for i in $(seq 1 20); do
